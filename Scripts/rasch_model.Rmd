@@ -15,7 +15,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# The Rasch-Model
+# The Rasch Model
 
 The Rasch model is a one-dimensional measurement model (latent-trait model) for dichotomous items 
 
@@ -28,4 +28,94 @@ Within the Rasch model, two model assumptions are made:
     - $$ P(Y_i = 1|\eta) = \frac{e^{\eta - \alpha_i}}{1 + e^{\eta - \alpha_i}}$$
 2. Local independence of items
     - The latent variable $\eta$ explains all correlations between the items.
+    
+    
+Model assessment
+
+1. Equality of item parameters in sub-populations
+    1.1 Graphical model test
+    1.2 Conditional likelihood-quotient-test
+    1.3 Wald-test
+    1.4 Rasch-mixture-analysis
+2. Global model validitiy
+    2.1 Probability distribution of response patterns
+    2.2 Likelihood-quotient-test
+3. Equality of person scores in reduced Rasch models
+
+
+# Packages to analyse Rasch Models
+
+Of course there are different `R` packages available to analyse a Rasch model: 
+
+- `eRm` - extended Rasch model
+- `ltm` - latent trait model and
+- `TAM` - Test Analysis Modules
+
+There are different advantages of these packages - different analyses can be performed to assess the model validity.
+
+```{r load packages, message=FALSE}
+# Packages to perform Rasch models
+library(eRm)
+library(ltm)
+library(TAM)
+
+# Additional packages
+library(psychomix) # to fit finite mixtures of Rasch models
+library(psych) # to calculate Yules' Q
+library(tidyverse)
+```
+
+
+```{r Mean and Variance}
+data(raschdat1)
+raschdat1 %>% 
+  summarise_all(list(Mean = mean, Variance = var)) %>% 
+  pivot_longer(cols = everything(),
+               names_to = c("Item", "Statistic"),
+               names_pattern = "(I\\d+)_(.+)",
+               values_to = "Value") %>% 
+  pivot_wider(id_cols = Item,
+              names_from = Statistic,
+              values_from = Value)
+```
+
+```{r Yules-Q}
+yules_mat <- matrix(nrow = ncol(raschdat1), ncol = ncol(raschdat1),
+                    dimnames = list(colnames(raschdat1), colnames(raschdat1)))
+
+for (i in 1:nrow(yules_mat)) {
+  for (j in 1:ncol(yules_mat)) {
+    yules_mat[i,j] <- Yule(table(raschdat1[,i], raschdat1[,j]))
+  }
+}
+
+yules_mat %>% 
+  as_tibble() %>% # convert to tibble
+  mutate(variable_1 = colnames(.)) %>% # add variable names as column
+  pivot_longer(cols = -variable_1, # transform in wide format
+               names_to = "variable_2", 
+               values_to = "Yules_Q") %>% 
+  filter(as.integer(str_extract(variable_1, "\\d+")) <= 
+           as.integer(str_extract(variable_2, "\\d+"))) %>% # drop upper triangle of correlation matrix
+  mutate(variable_1 = factor(variable_1, levels = str_c("I", 1:length(unique(variable_1)))),
+         variable_2 = factor(variable_2, levels = rev(levels(variable_1)))) %>% # transform variables to factors
+  ggplot(aes(x = variable_1, y = variable_2, fill = Yules_Q)) +
+  geom_tile() +
+  geom_text(aes(label = round(Yules_Q, 2)), size = 2) +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white",
+                       midpoint = 0, limit = c(-1, 1),
+                       name = "Yules' Q") +
+  theme_minimal() +
+  theme(axis.title = element_blank())
+```
+
+
+# Rasch Model with the `eRm` package
+
+```{r Rasch model fit}
+# Fit of Rasch Model with conditional maximum likelihood
+rasch_model <- RM(raschdat1)
+
+summary(rasch_model)
+```
 
