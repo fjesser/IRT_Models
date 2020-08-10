@@ -33,8 +33,8 @@ Within the Rasch model, two model assumptions are made:
 Model assessment
 
 1. Equality of item parameters in sub-populations
-    1.1 Graphical model test
-    1.2 Conditional likelihood-quotient-test
+    1.1 Andersen test (Conditional likelihood-quotient-test)
+    1.2 Graphical model test
     1.3 Wald-test
     1.4 Rasch-mixture-analysis
 2. Global model validitiy
@@ -114,8 +114,101 @@ yules_mat %>%
 
 ```{r Rasch model fit}
 # Fit of Rasch Model with conditional maximum likelihood
-rasch_model <- RM(raschdat1)
+rasch_model <- RM(raschdat1,
+                  sum0 = TRUE) # sum0 = Normed to sum = 0; default
 
 summary(rasch_model)
 ```
+
+
+
+## Itemcharactersic function
+
+```{r}
+plotICC(rasch_model, ask = FALSE)
+```
+
+
+
+```{r}
+plotjointICC(rasch_model)
+```
+
+
+
+
+```{r Person scores}
+person_rasch <- person.parameter(rasch_model)
+print(person_rasch) # max number of correct answers war 26; nobody solved no item
+summary(person_rasch)
+```
+
+
+Person-Item-Map
+```{r}
+plotPImap(rasch_model)
+```
+
+
+
+# Model assessment
+
+Test model validity
+
+## Equality of item parameters in sub-populations
+    
+### Andersen Test
+
+```{r}
+lr_test <- LRtest(rasch_model, splitcr = "median" ) # median is default
+summary(lr_test)
+```
+  
+The Andersen test yielded in a non-signifikant result, $\chi^2(29) = 32.54, p = .30$. Therefore, the null-hypotheses that the itemparameters are the same can be maintained.
+
+
+## Graphical model test
+
+By means of the function `plotGOF` from the `eRm` package, it is possible to obtain a plot in which the itemparameters of the andersen test are shown in respect to the split criterion. 
+    
+    
+```{r}
+plotGOF(lr_test, conf = list())
+```
+
+
+## Wald-Test
+
+The Walt-test is a test to validate for every item whether the intemparameters are the same in subpopulation (created through split criterion).
+Only interpret these results if the global test (Andersen-Test) is significant. This procedure is comparable to the execution of an ANOVA. The global test has to be significant to interpret.
+```{r}
+wald_test <- Waldtest(rasch_model, splitcr = "median") # median is the default
+
+# Output ordered matrix in respect to p-values
+wald_test$coef.table[order(wald_test$coef.table[,"p-value"]),]
+```
+
+
+## Rasch-mixture-analysis
+
+```{r}
+
+```
+
+
+
+    1.1 Graphical model test
+    1.2 Conditional likelihood-quotient-test
+    1.3 Wald-test
+    1.4 Rasch-mixture-analysis
+2. Global model validitiy
+    2.1 Probability distribution of response patterns
+    2.2 Likelihood-quotient-test
+3. Equality of person scores in reduced Rasch models
+
+
+
+
+
+
 
