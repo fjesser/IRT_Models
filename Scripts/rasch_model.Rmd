@@ -62,12 +62,12 @@ library(TAM)
 # Additional packages
 library(psychomix) # to fit finite mixtures of Rasch models
 library(psych) # to calculate Yules' Q
-library(tidyverse)
+library(tidyverse) # data transformation, plotting, etc.
 ```
 
 
-```{r Mean and Variance}
-data(raschdat1)
+```{r mean and variance}
+data(raschdat1) # load data from eRm package
 raschdat1 %>% 
   summarise_all(list(Mean = mean, Variance = var)) %>% 
   pivot_longer(cols = everything(),
@@ -79,7 +79,7 @@ raschdat1 %>%
               values_from = Value)
 ```
 
-```{r Yules-Q}
+```{r Yules-Q plot}
 yules_mat <- matrix(nrow = ncol(raschdat1), ncol = ncol(raschdat1),
                     dimnames = list(colnames(raschdat1), colnames(raschdat1)))
 
@@ -90,15 +90,23 @@ for (i in 1:nrow(yules_mat)) {
 }
 
 yules_mat %>% 
-  as_tibble() %>% # convert to tibble
-  mutate(variable_1 = colnames(.)) %>% # add variable names as column
-  pivot_longer(cols = -variable_1, # transform in wide format
+  # convert to tibble
+  as_tibble() %>%
+  # add variable names as column
+  mutate(variable_1 = colnames(.)) %>%
+  # transform in wide format
+  pivot_longer(cols = -variable_1, 
                names_to = "variable_2", 
                values_to = "Yules_Q") %>% 
+  # drop upper triangle of correlation matrix
   filter(as.integer(str_extract(variable_1, "\\d+")) <= 
-           as.integer(str_extract(variable_2, "\\d+"))) %>% # drop upper triangle of correlation matrix
-  mutate(variable_1 = factor(variable_1, levels = str_c("I", 1:length(unique(variable_1)))),
-         variable_2 = factor(variable_2, levels = rev(levels(variable_1)))) %>% # transform variables to factors
+           as.integer(str_extract(variable_2, "\\d+"))) %>% 
+  # transform variables to factors
+  mutate(variable_1 = factor(variable_1,
+                             levels = str_c("I", 1:length(unique(variable_1)))),
+         variable_2 = factor(variable_2,
+                             levels = rev(levels(variable_1)))) %>% 
+  # create plot
   ggplot(aes(x = variable_1, y = variable_2, fill = Yules_Q)) +
   geom_tile() +
   geom_text(aes(label = round(Yules_Q, 2)), size = 2) +
@@ -137,7 +145,7 @@ plotjointICC(rasch_model)
 
 
 
-```{r Person scores}
+```{r person scores}
 person_rasch <- person.parameter(rasch_model)
 print(person_rasch) # max number of correct answers war 26; nobody solved no item
 summary(person_rasch)
@@ -160,7 +168,7 @@ Test model validity
 ### Andersen Test
 
 ```{r}
-lr_test <- LRtest(rasch_model, splitcr = "median" ) # median is default
+lr_test <- LRtest(rasch_model, splitcr = "median" ) # split criterion median is the default
 summary(lr_test)
 ```
   
@@ -191,8 +199,22 @@ wald_test$coef.table[order(wald_test$coef.table[,"p-value"]),]
 
 ## Rasch-mixture-analysis
 
-```{r}
+Combination of Rasch-model with latent class analysis. Sub-populations
 
+Usage of the function `raschmix` from the package `psychomix`.
+
+```{r rasch-mixture-analysis}
+mix_1_grp <- raschmix(data = as.matrix(raschdat1), # data input has to be a matrix
+                      k = 1, # number of latent classes
+                      scores = "meanvar")
+summary(mix_1_grp)
+```
+
+```{r}
+mix_2_grp <- raschmix(data = as.matrix(raschdat1), # data input has to be a matrix
+                      k = 2, # number of latent classes
+                      scores = "meanvar")
+summary(mix_2_grp)
 ```
 
 
@@ -204,10 +226,34 @@ wald_test$coef.table[order(wald_test$coef.table[,"p-value"]),]
 2. Global model validitiy
     2.1 Probability distribution of response patterns
     2.2 Likelihood-quotient-test
+    
+    
+    
 3. Equality of person scores in reduced Rasch models
 
+```{r}
+MLoef(rasch_model, splitcr = "median")
+```
 
 
+
+# Itemfit and Personfit Statistics
+
+The `itemfit` function of the `eRm` package needs an object of class `ppar` as input. This type of object is created with the `person.parameter` function. Therefore, the object with...
+```{r itemfit}
+rasch_itemfit <- itemfit(person_rasch) %>% # calculates itemfit statistics
+  print(visible = FALSE) # returns otherwise printed matrix
+rasch_itemfit[order(rasch_itemfit[,"p-value"]),] # prints matrix ordered by p-value
+```
+
+
+Given model validity 5% of Person should have p-values below 5%.
+
+```{r personfit}
+rasch_persfit <- personfit(person_rasch) %>% 
+  print(visible = FALSE) # returns otherwise printed matrix
+rasch_persfit[order(rasch_persfit[,"p-value"]),]
+```
 
 
 
