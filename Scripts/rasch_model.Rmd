@@ -37,7 +37,7 @@ Model assessment
     1.2 Graphical model test
     1.3 Wald-test
     1.4 Rasch-mixture-analysis
-2. Global model validitiy
+2. Global model validity
     2.1 Probability distribution of response patterns
     2.2 Likelihood-quotient-test
 3. Equality of person scores in reduced Rasch models
@@ -132,28 +132,25 @@ summary(rasch_model)
 
 ## Itemcharactersic function
 
-```{r}
-plotICC(rasch_model, ask = FALSE)
-```
-
-
-
-```{r}
+```{r ICC}
 plotjointICC(rasch_model)
+#plotICC(rasch_model, ask = FALSE) # get ICC for every item
 ```
+
+
 
 
 
 
 ```{r person scores}
 person_rasch <- person.parameter(rasch_model)
-print(person_rasch) # max number of correct answers war 26; nobody solved no item
+print(person_rasch) # max number of correct answers was 26; nobody solved no item
 summary(person_rasch)
 ```
 
 
 Person-Item-Map
-```{r}
+```{r PI-Map}
 plotPImap(rasch_model)
 ```
 
@@ -167,7 +164,7 @@ Test model validity
     
 ### Andersen Test
 
-```{r}
+```{r Andersen Test}
 lr_test <- LRtest(rasch_model, splitcr = "median" ) # split criterion median is the default
 summary(lr_test)
 ```
@@ -181,7 +178,8 @@ By means of the function `plotGOF` from the `eRm` package, it is possible to obt
     
     
 ```{r}
-plotGOF(lr_test, conf = list())
+plotGOF(lr_test,
+        conf = list()) # outputs confidence interval ellipses
 ```
 
 
@@ -195,6 +193,7 @@ wald_test <- Waldtest(rasch_model, splitcr = "median") # median is the default
 # Output ordered matrix in respect to p-values
 wald_test$coef.table[order(wald_test$coef.table[,"p-value"]),]
 ```
+
 
 
 ## Rasch-mixture-analysis
@@ -243,17 +242,73 @@ The `itemfit` function of the `eRm` package needs an object of class `ppar` as i
 ```{r itemfit}
 rasch_itemfit <- itemfit(person_rasch) %>% # calculates itemfit statistics
   print(visible = FALSE) # returns otherwise printed matrix
+
 rasch_itemfit[order(rasch_itemfit[,"p-value"]),] # prints matrix ordered by p-value
 ```
 
+The $\chi^2$-statistic is a residualbased 
 
 Given model validity 5% of Person should have p-values below 5%.
+
+The following is from the book: Applying the Rasch Model
+
+Infit and Outfit Mean Squares are unstandardized measures of fit and Infit/Outfit t is the standardized form
+
+Mean Squares of the fit statistic represent the mean of the squared residuals for any item. Residuals = differences between Rasch model's theoretical expectation of item performance and the observed performance for an item. 
+"Mean square fit statistics indicate the size of how much misfit is revealed in the actual data"
+
+Standardized fit statistic: mean squares are transformed regarding sample size to produce a statistic with a t distribution (acceptable values should lie between -1.96 and 1.96)
+
+Mean squares: how much misfit; t value: how likely is the misfit
+
+
+Infit statistics: information-weighted indicator of misfit; more weight is given to the performances of those persons located closer to the item's difficulty value --> because if ability of person is close to item's difficulty, performance of person gives more insight into item's performance
+
+Outfit statistics: not weighted indicator of misfit --> more sensitive to the influence of outliers = performance of persons distant from items location
+
+--> Therefore, often more focus on infit statistics; extreme infit statistics usually cause more concern than extreme outfit.
+
 
 ```{r personfit}
 rasch_persfit <- personfit(person_rasch) %>% 
   print(visible = FALSE) # returns otherwise printed matrix
+
 rasch_persfit[order(rasch_persfit[,"p-value"]),]
 ```
+
+
+
+```{r person separation reliability}
+sep_rel <- SepRel(person_rasch)
+summary(sep_rel)
+```
+
+person separation Reliability: proportion of person variance that is not due to error. Concept of person separation reliability is very similar but not identical to reliability indices such as Cronbach's $\alpha$
+
+In this example the person separation reliability equals `r round(sep_rel$sep.rel, 2)`
+
+
+
+```{r}
+# person separation reliability by hand
+var(person_rasch$theta.table$`Person Parameter`)/(sep_rel$MSE + var(person_rasch$theta.table$`Person Parameter`))
+
+(var(person_rasch$theta.table$`Person Parameter`) - sep_rel$MSE)/ var(person_rasch$theta.table$`Person Parameter`)
+
+```
+
+
+```{r}
+# item separation reliability 
+
+(var(rasch_model$betapar) - sep_rel$MSE)/var(rasch_model$betapar)
+
+
+
+
+```
+
+
 
 
 
